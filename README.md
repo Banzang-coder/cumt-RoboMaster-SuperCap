@@ -1,2 +1,3 @@
 # cumt-RoboMaster-SuperCap
 一种用于Robomaster比赛的双向拓扑超级电容
+本设计用于2023年全国赛cubot战队舵轮步兵与摩擦轮英雄，旨在提高规则允许下的闲置功率利用率。
