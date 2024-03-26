@@ -3,7 +3,8 @@
 
 本设计用于2023年全国赛cubot战队舵轮步兵与摩擦轮英雄，旨在提高规则允许下的闲置功率利用率。
 
- ![Image text](Screenshots/product.png)
+ ![Image text]
+ (Screenshots/product.png)
  
 # 调试过程遇到的问题(记忆不全，仅记录记得的)
 1.在双向调试过程中，存在着有些时候上电就炸板，后来了解到是大多数人做这个拓扑都会犯的错误，是因为buck的缓启动会被反向认作很高的boost导致（已解决）
