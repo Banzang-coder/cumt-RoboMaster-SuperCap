@@ -27,8 +27,9 @@ pid_type_def power_referee_loop;
  * @param[in]      max_iout: pid max iout
  * @retval         none
  */
-void PID_init(pid_type_def *pid, const fp32 p, const fp32 i, const fp32 d, fp32 max_out, fp32 max_iout, fp32 min_out,
-        fp32 min_iout)
+void PID_init(pid_type_def *pid, const fp32 p, const fp32 i, const fp32 d,
+			fp32 min_iout, fp32 max_iout, 
+				fp32 min_out,fp32 max_out)
 {
     if (pid == NULL || pid == NULL)
     {
@@ -146,7 +147,7 @@ float IncrementalPID_Compute(IncrementalPID *pid, float setpoint, float measured
     float error = setpoint - measured_value;
 
     // 计算积分项
-    pid->integral += pid->Ki * error;
+    pid->integral = pid->Ki * error;
     if (pid->integral > pid->integral_max) {
         pid->integral = pid->integral_max;
     } else if (pid->integral < pid->integral_min) {
@@ -198,13 +199,7 @@ void IncrementalPID_ClearWithoutOutput(IncrementalPID *pid)
     pid->prev_error = 0.0f;
 }
 
-// 清空增量式PID控制器的参数
-//void IncrementalPID_Clear(IncrementalPID *pid) 
-//	{
-//    IncrementalPID_ClearWithoutOutput(pid);
-//    pid->prev_output = 0.0f;
-//    pid->output = 0.0f;
-//}
-
 IncrementalPID currentout_Iloop;
 IncrementalPID voltageout_Vloop;
+IncrementalPID powerin_Ploop;
+IncrementalPID Nchargelimit;

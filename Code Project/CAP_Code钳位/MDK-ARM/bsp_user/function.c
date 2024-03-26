@@ -1,8 +1,8 @@
 #include "function.h"
 
 
-struct _Ctr_value CtrValue = { 0.0f, 0.0f, 0.0f, MIN_BUCK_DUTY, 0, 0, 0 }; //控制参数
-struct _FLAG FLAGS = { 0, 0, 0, 0, 0, 0, 0, 0, 0 }; //控制标志位
+struct _Ctr_value CtrValue = { 0.0f, 0.0f, 30.0f, 0.0f, 0 ,MIN_BUCK_DUTY, 0, 0, 0 }; //控制参数
+struct _FLAG FLAGS = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; //控制标志位
 
 
 
@@ -10,12 +10,13 @@ struct _FLAG FLAGS = { 0, 0, 0, 0, 0, 0, 0, 0, 0 }; //控制标志位
 /** ===================================================================
  **     Funtion Name :void BBMode(void)
  **     Description :运行模式判断
-
-				!!通过对shift_ratio = 0.83f 的判断 来决定是进入buck还是mix以达到无缝切换(使用占空比钳位)!!
-
+ **      Buck模式：输出参考电压<0.8倍输入电压
+ **      MIX模式：1.2倍输入电压>输出参考电压>0.8倍输入电压
+ **      当进入MIX（buck-boost）模式后，退出到 Buck时需要滞缓，防止在临界点来回振荡
  **     Parameters  :
  **     Returns     :
- ** ===================================================================*/
+ ** ===================================================================
+*/
 
 void BBMode(void)
 {
@@ -31,7 +32,7 @@ void BBMode(void)
     {
         /*init control value*/
         CtrValue.Voref = tarvoltage;
-        CtrValue.Poref = tarpower;
+        CtrValue.Poref = 30.0f;
         // power ref will change in CAN_receive file, HAL_FDCAN_RxFifo0Callback function
 
         if (cap.V < (in.V * 0.8f)) // vout < 0.8 * vin
@@ -66,6 +67,9 @@ void BBMode(void)
     // when mode changes, set reg
     if (PreBBFlag != FLAGS.BBFlag)
         FLAGS.BBModeChange = 1;
+		else
+			  FLAGS.BBModeChange = 0;
+
 }
 
 /** ===================================================================
@@ -92,7 +96,7 @@ void DRMode(void)
     //NA
     case NA1:
     {
-        if (powerin_loop.out >= 0)
+        if (powerin_Ploop.output >= 0)
         {
             FLAGS.DRFlag = Charge;     //charge mode
         }
@@ -105,7 +109,9 @@ void DRMode(void)
         // charge mode
     case Charge:
     {
-        if (powerin_loop.out < 0)
+			LED_ON(RED);
+			LED_OFF(BLUE);
+        if (powerin_Ploop.output < 0)
         {
             FLAGS.DRFlag = Discharge;  //Discharge mode
         }
@@ -114,7 +120,9 @@ void DRMode(void)
         //discharge mode
     case Discharge:
     {
-        if (powerin_loop.out >= 0)
+			LED_OFF(RED);
+			LED_ON(BLUE);
+        if (powerin_Ploop.output >= 0)
         {
             FLAGS.DRFlag = Charge;     //charge mode
         }
@@ -124,8 +132,8 @@ void DRMode(void)
     //when mode changes,set reg
     if (PreDRFlag != FLAGS.DRFlag)
         FLAGS.DRModeChange = 1;
-    else
-        FLAGS.DRModeChange = 0;
+//    else
+//        FLAGS.DRModeChange = 0;
 
 }
 
@@ -138,16 +146,16 @@ void DRMode(void)
 
 void LED_ON(enum _LED_Color LED_Color)
 {
-	if      (LED_Color == GREEN){HAL_GPIO_WritePin(GPIOA,GPIO_PIN_15,GPIO_PIN_SET);}//设置GPIO引脚电平}
-	else if (LED_Color == RED)  {HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5, GPIO_PIN_SET);}
-	else if (LED_Color == BLUE) {HAL_GPIO_WritePin(GPIOB,GPIO_PIN_6,GPIO_PIN_SET);}
+	if      (LED_Color == GREEN){HAL_GPIO_WritePin(GPIOA,GPIO_PIN_15,GPIO_PIN_RESET);}//设置GPIO引脚电平}
+	else if (LED_Color == RED)  {HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5, GPIO_PIN_RESET);}
+	else if (LED_Color == BLUE) {HAL_GPIO_WritePin(GPIOB,GPIO_PIN_6,GPIO_PIN_RESET);}
 }
 	
 void LED_OFF(enum _LED_Color LED_Color)
 {
-	if      (LED_Color == GREEN){HAL_GPIO_WritePin(GPIOA,GPIO_PIN_15,GPIO_PIN_RESET);}
-	else if (LED_Color == RED)  {HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5, GPIO_PIN_RESET);}
-	else if (LED_Color == BLUE) {HAL_GPIO_WritePin(GPIOB,GPIO_PIN_6,GPIO_PIN_RESET);}
+	if      (LED_Color == GREEN){HAL_GPIO_WritePin(GPIOA,GPIO_PIN_15,GPIO_PIN_SET);}
+	else if (LED_Color == RED)  {HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5, GPIO_PIN_SET);}
+	else if (LED_Color == BLUE) {HAL_GPIO_WritePin(GPIOB,GPIO_PIN_6,GPIO_PIN_SET);}
 }
 
 void LED_Toggle(enum _LED_Color LED_Color)
@@ -308,8 +316,9 @@ void StateMRise(void)
         CtrValue.BoostMaxDuty = MIN_BOOST_DUTY;
         //环路计算变量初始化
         //control loop calculate parameter initial
-				IncrementalPID_Clear(&currentout_Iloop); 
-				IncrementalPID_Clear(&voltageout_Vloop); 
+					IncrementalPID_Clear(&currentout_Iloop); 
+					IncrementalPID_Clear(&voltageout_Vloop); 
+					IncrementalPID_Clear(&powerin_Ploop); 
         //跳转至软启等待状态
         //jump 2 soft start waiting state
         STState = SSWait;
@@ -334,6 +343,7 @@ void StateMRise(void)
             //control loop calculate parameter initial
 						IncrementalPID_Clear(&currentout_Iloop); 
 						IncrementalPID_Clear(&voltageout_Vloop); 
+						IncrementalPID_Clear(&powerin_Ploop); 
             //限制启动占空比
             //restrict operation duty
             if (cap.V <= 5.0f)
@@ -345,7 +355,8 @@ void StateMRise(void)
             }
             else
             {
-                CtrValue.BuckDuty = cap.V / in.V * HRTIMA_Period;
+								volt_ratio = cap.V/in.V + (1.0f + 0.05f - 0.83f);
+                CtrValue.BuckDuty = volt_ratio * HRTIMA_Period;
                 CtrValue.BuckMaxDuty = MAX_BUCK_DUTY;
                 CtrValue.BoostDuty = MIN_BOOST_DUTY;
                 CtrValue.BoostMaxDuty = MAX_BOOST_DUTY;
@@ -363,13 +374,37 @@ void StateMRise(void)
 				{
 					IncrementalPID_Clear(&currentout_Iloop); 
 					IncrementalPID_Clear(&voltageout_Vloop); 
+					IncrementalPID_Clear(&powerin_Ploop); 
+				/*------------------------------------------------*/
 					/*-----定时器启动！----*/
+					/*-----相关函数初始化----*/
           User_HRTIM_init();
+												                         /* p      i     d  */
+					IncrementalPID_Init(&currentout_Iloop, 0.001f, 0.008f, 0.03f,volt_ratio,
+                         1.2f, -1.2f,
+                         1.2f, 0.10f); 
+					IncrementalPID_Init(&voltageout_Vloop, 0.00f, 0.03f, 0.00f,volt_ratio,
+                         1.2f, -1.2f,
+                         1.2f, 0.10f);
+					IncrementalPID_Init(&powerin_Ploop, 0.0f, 0.0005f, 0.0f,0.0f,
+                         1.2f, -1.2f,
+                         10.00f, -10.00f);	
+					CAN_Filter_Init(&hcan);
+	        UART2_Open(RxBuffer,sizeof(RxBuffer));
+				/*-----低通滤波-----*/	
+#if LPF_ENABLE == 1
+					for (char i = 0; i < 5; i++)
+					{
+						low_filter_init(&lpf[i], 200e3, 30e3);
+					}
+#endif
+					
+				/*------------------------------------------------*/
+				
         //发波标志位置位
         //PWM start flag
 					FLAGS.PWMENFlag = 1;
 				}
-
         //最大占空比限制逐渐增加
         //maximum PWM duty add gradually
         BuckMaxDutyCnt++;
@@ -378,11 +413,6 @@ void StateMRise(void)
         //PWM maximum restrict add gradually
         CtrValue.BuckMaxDuty = CtrValue.BuckMaxDuty + BuckMaxDutyCnt * 5;
         CtrValue.BoostMaxDuty = CtrValue.BoostMaxDuty + BoostMaxDutyCnt * 5;
-        if (CtrValue.BuckMaxDuty > MAX_BUCK_DUTY * 0.3)
-        {
-//            HAL_GPIO_WritePin(L_OD_GPIO_Port, L_OD_Pin, GPIO_PIN_SET);
-//            HAL_GPIO_WritePin(R_OD_GPIO_Port, R_OD_Pin, GPIO_PIN_SET);
-        }
         //累加到最大值
         //add to the maximum value
         if (CtrValue.BuckMaxDuty > MAX_BUCK_DUTY)
@@ -421,7 +451,10 @@ void StateMRise(void)
  */
 void StateMRun(void)
 {
-		BBMode();//判断buck与mix模态
+		DRMode();//判断充放电方向
+	  BBMode();
+		BuckBoostVLoopCtlPID();//PID模态回路计算
+		DetectMErr();
 }
 
 /*
@@ -435,11 +468,9 @@ void StateMRun(void)
  */
 void StateMErr(void)
 {
-    //关闭PWM
+    //关闭PWMF
     //Shutdown PWM
     FLAGS.PWMENFlag = 0;
-//    HAL_GPIO_WritePin(R_OD_GPIO_Port, R_OD_Pin, GPIO_PIN_RESET);
-//    HAL_GPIO_WritePin(L_OD_GPIO_Port, L_OD_Pin, GPIO_PIN_RESET);
     HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TD1); //关闭
     HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA2 | HRTIM_OUTPUT_TD2); //关闭
 
@@ -447,6 +478,317 @@ void StateMErr(void)
     //restart when error state clear up
     if (FLAGS.ErrFlag == F_NOERR)
         FLAGS.SMFlag = Wait;
+}
+
+/*
+ ** ===================================================================
+ **     Function Name :void ShortOff(void)
+ **     Description :短路保护，可以重启10次
+ **                  shortage protect, can restart 10 times
+ **     Parameters  : none
+ **     Returns     : none
+ ** ===================================================================
+ */
+#define MAX_SHORT_I     14.0f//短路电流判据
+//shortage current judgment
+#define MIN_SHORT_V     0.8f//短路电压判据
+//shortage voltage judgment
+void ShortOff(void)
+{
+    static int32_t RSCnt = 0;
+    static uint8_t RSNum = 0;
+
+    //当output current大于 15A，且output voltage小于0.2V时，可判定为发生短路保护
+    //when output current is larger than 11A and output voltage less than 0.2V,
+    //can trigger shortage protect
+    if ((cap.I > MAX_SHORT_I) && (cap.V < MIN_SHORT_V))
+    {
+        //关闭PWM
+        //shutdown PWM
+        FLAGS.PWMENFlag = 0;
+            HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TD1); //关闭
+            HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA2 | HRTIM_OUTPUT_TD2); //关闭
+        //故障标志位
+        //error flag
+        setRegBits(FLAGS.ErrFlag, F_SW_SHORT);
+        //跳转至故障状态
+        //jump 2 error state
+        FLAGS.SMFlag = Err;
+    }
+    //输出短路保护恢复
+    //recover for shortage protect
+    //当发生输出短路保护，关机后等待4S后清除故障信息，进入等待状态等待重启
+    //when triggered shortage protect, shutdown for 4s to wait for error state clean up,
+    //entering wait state
+    if (getRegBits(FLAGS.ErrFlag, F_SW_SHORT))
+    {
+        //等待故障清楚计数器累加
+        //wait for error flag cleaning counter
+        RSCnt++;
+        //等待2S
+        //wait for 2s
+        if (RSCnt > 400)
+        {
+            //计数器清零
+            //counter reset
+            RSCnt = 0;
+            //短路重启只重启10次，10次后不重启
+            //shortage protect only reset for 10 times,
+            //after 10 times system shutdown
+            if (RSNum > 10)
+            {
+                //确保不清除故障，不重启
+                //ensuring not clean error flag
+                RSNum = 11;
+                //关闭PWM
+                //shutdown PWM
+                FLAGS.PWMENFlag = 0;
+                HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TD1); //关闭
+                HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA2 | HRTIM_OUTPUT_TD2); //关闭
+            }
+            else
+            {
+                //短路重启计数器累加
+                //shortage protect counter add
+                RSNum++;
+                //清除过流保护故障标志位
+                //clean shortage protect flag
+                clrRegBits(FLAGS.ErrFlag, F_SW_SHORT);
+            }
+        }
+    }
+}
+
+/*
+ ** ===================================================================
+ **     Function Name :void SwOCP(void)
+ **     Description :软件过流保护，可重启
+ **                  software shortage protect, can restart
+ **     Parameters  : none
+ **     Returns     : none
+ ** ===================================================================
+ */
+#define MAX_OCP_VAL     13.0f//13A过流保护点
+void SwOCP(void)
+{
+    //过流保护判据保持计数器定义
+    static uint16_t OCPCnt = 0;
+    //故障清楚保持计数器定义
+    static uint16_t RSCnt = 0;
+    //保留保护重启计数器
+    static uint16_t RSNum = 0;
+
+    //当output current大于*A，且保持500ms
+    if ((cap.I > MAX_OCP_VAL) && (cap.I < -MAX_OCP_VAL) && (FLAGS.SMFlag == Run))
+    {
+        //条件保持计时
+        OCPCnt++;
+        //条件保持50ms，则认为过流发生
+        if (OCPCnt > 10)
+        {
+            //计数器清0
+            OCPCnt = 0;
+            //关闭PWM
+            FLAGS.PWMENFlag = 0;
+            HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TD1); //关闭
+            HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA2 | HRTIM_OUTPUT_TD2); //关闭
+            //故障标志位
+            setRegBits(FLAGS.ErrFlag, F_SW_IOUT_OCP);
+            //跳转至故障状态
+            FLAGS.SMFlag = Err;
+        }
+    }
+    else
+        //计数器清0
+        OCPCnt = 0;
+
+    //输出过流后恢复
+    //当发生输出软件过流保护，关机后等待4S后清除故障信息，进入等待状态等待重启
+    if (getRegBits(FLAGS.ErrFlag, F_SW_IOUT_OCP))
+    {
+        //等待故障清楚计数器累加
+        RSCnt++;
+        //等待2S
+        if (RSCnt > 400)
+        {
+            //计数器清零
+            RSCnt = 0;
+            //过流重启计数器累加
+            RSNum++;
+            //过流重启只重启10次，10次后不重启（严重故障）
+            if (RSNum > 10)
+            {
+                //确保不清除故障，不重启
+                RSNum = 11;
+                //关闭PWM
+                FLAGS.PWMENFlag = 0;
+                HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TD1); //关闭
+            }
+            else
+            {
+                //清除过流保护故障标志位
+                clrRegBits(FLAGS.ErrFlag, F_SW_IOUT_OCP);
+            }
+        }
+    }
+}
+
+/*
+ ** ===================================================================
+ **     Function Name :void SwOVP(void)
+ **     Description :软件输出过压保护，不重启
+ **     Parameters  : none
+ **     Returns     : none
+ ** ===================================================================
+ */
+#define MAX_VOUT_OVP_VAL    25.0f//24V过压保护
+void VoutSwOVP(void)
+{
+    //过压保护判据保持计数器定义
+    static uint16_t OVPCnt = 0;
+
+    //当output voltage大于25V，且保持100ms
+    if (cap.V > MAX_VOUT_OVP_VAL)
+    {
+        //条件保持计时
+        OVPCnt++;
+        //条件保持10ms
+        if (OVPCnt > 2)
+        {
+            //计时器清零
+            OVPCnt = 0;
+            //关闭PWM
+            FLAGS.PWMENFlag = 0;
+            HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TD1); //关闭
+            HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA2 | HRTIM_OUTPUT_TD2); //关闭
+            //故障标志位
+            setRegBits(FLAGS.ErrFlag, F_SW_VOUT_OVP);
+            //跳转至故障状态
+            FLAGS.SMFlag = Err;
+        }
+    }
+    else
+        OVPCnt = 0;
+}
+
+/*
+ ** ===================================================================
+ **     Function Name :void VinSwUVP(void)
+ **     Description :输入软件欠压保护，低压输入保护,可恢复
+ **     Parameters  : none
+ **     Returns     : none
+ ** ===================================================================
+ */
+#define MIN_UVP_VAL    18.0f//18V欠压保护
+#define MIN_UVP_VAL_RE 20.5f//20.5V欠压保护恢复
+void VinSwUVP(void)
+{
+    //过压保护判据保持计数器定义
+    static uint16_t UVPCnt = 0;
+    static uint16_t RSCnt = 0;
+
+    //当input voltage小于20V，且保持200ms
+    if ((in.V < MIN_UVP_VAL) && (FLAGS.SMFlag != Init) && (!FLAGS.BBModeChange))
+    {
+        //条件保持计时
+        UVPCnt++;
+        //条件保持10ms
+        if (UVPCnt > 2)
+        {
+            //计时器清零
+            UVPCnt = 0;
+            RSCnt = 0;
+            //关闭PWM
+            FLAGS.PWMENFlag = 0;
+            HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TD1); //关闭
+            HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA2 | HRTIM_OUTPUT_TD2); //关闭
+            //故障标志位
+            setRegBits(FLAGS.ErrFlag, F_SW_VIN_UVP);
+            //跳转至故障状态
+            FLAGS.SMFlag = Err;
+        }
+    }
+    else
+        UVPCnt = 0;
+
+    //输入欠压保护恢复
+    //当发生输入欠压保护，等待输入电压恢复至正常水平后清楚故障标志位，重启
+    if (getRegBits(FLAGS.ErrFlag, F_SW_VIN_UVP))
+    {
+        if (in.V > MIN_UVP_VAL_RE)
+        {
+            //等待故障清楚计数器累加
+            RSCnt++;
+            //等待1S
+            if (RSCnt > 200)
+            {
+                RSCnt = 0;
+                UVPCnt = 0;
+                //清楚故障标志位
+                clrRegBits(FLAGS.ErrFlag, F_SW_VIN_UVP);
+            }
+        }
+        else
+            RSCnt = 0;
+    }
+    else
+        RSCnt = 0;
+}
+
+/*
+ ** ===================================================================
+ **     Funtion Name :void VinSwOVP(void)
+ **     Description :软件输入过压保护，不重启
+ **     Parameters  : none
+ **     Returns     : none
+ ** ===================================================================
+ */
+#define MAX_VIN_OVP_VAL    30.0f//28V过压保护
+void VinSwOVP(void)
+{
+    //过压保护判据保持计数器定义
+    static uint16_t OVPCnt = 0;
+
+    //当input voltage大于30V，且保持100ms
+    if (in.V > MAX_VIN_OVP_VAL)
+    {
+        //条件保持计时
+        OVPCnt++;
+        //条件保持10ms
+        if (OVPCnt > 500)
+        {
+            //计时器清零
+            OVPCnt = 0;
+            //关闭PWM
+            FLAGS.PWMENFlag = 0;
+            HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TD1); //关闭
+            HAL_HRTIM_WaveformOutputStop(&hhrtim1, HRTIM_OUTPUT_TA2 | HRTIM_OUTPUT_TD2); //关闭
+            //故障标志位
+            setRegBits(FLAGS.ErrFlag, F_SW_VIN_OVP);
+            //跳转至故障状态
+            FLAGS.SMFlag = Err;
+        }
+    }
+    else
+        OVPCnt = 0;
+}
+
+/*
+ ** ===================================================================
+ **     Function Name :void DetectMErr(void)
+ **     Description :故障检测执行函数
+ **                  error detect
+ **     Parameters  : none
+ **     Returns     : none
+ ** ===================================================================
+ */
+void DetectMErr(void)
+{
+	ShortOff();
+//	SwOCP();
+//	VoutSwOVP();
+//	VinSwUVP();
+//	VinSwOVP();
 }
 
 /** ===================================================================
@@ -470,7 +812,7 @@ void ValueInit(void)
     //initial reference parameter
     CtrValue.Voref = 0;
     CtrValue.Ioref = 0;
-    CtrValue.Poref = 0;
+    CtrValue.Poref = 30.0f;
     //限制占空比
     //restrict PWM duty
     CtrValue.BuckDuty = MIN_BUCK_DUTY;
@@ -481,6 +823,7 @@ void ValueInit(void)
     //control loop initial
 		IncrementalPID_Clear(&currentout_Iloop); 
 		IncrementalPID_Clear(&voltageout_Vloop); 
+		IncrementalPID_Clear(&powerin_Ploop); 
 }
 
 /** ===================================================================
@@ -491,12 +834,11 @@ void ValueInit(void)
  ** ===================================================================*/
 void User_HRTIM_init(void)
 {
-	
+	HAL_HRTIM_WaveformCounterStart(&hhrtim1,HRTIM_TIMERID_MASTER|HRTIM_TIMERID_TIMER_A|HRTIM_TIMERID_TIMER_D); //开启子定时器A
+
 	HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1|HRTIM_OUTPUT_TA2); //通道打开
 	HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TD1|HRTIM_OUTPUT_TD2); //通道打开
 
-	HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_A); //开启子定时器A
-	HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_D); //开启子定时器A
 }
 
 

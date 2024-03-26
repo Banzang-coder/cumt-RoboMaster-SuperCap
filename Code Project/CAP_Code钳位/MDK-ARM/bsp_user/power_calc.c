@@ -2,6 +2,7 @@
 #include "drv_pid.h"
 
 struct ParameterBridge dcdcinfo;
+struct ParameterBridge dcdctest;
 
 /** ===================================================================
  **     Funtion Name :void UserADC1_Init(void)
@@ -64,6 +65,7 @@ uint32_t usefor_adc[ADC1_CHANNEL_CNT];
     }
 /*--IN3_VBAT,IN4_VCAP,IN11_IBAT,IN12_ICAPout,IN13_ICAPin--*/
 		control_calc();
+		adcProtcnt++;
 }
 
 
@@ -72,7 +74,7 @@ uint32_t usefor_adc[ADC1_CHANNEL_CNT];
  ** ===================================================================
  **     Funtion Name : void control_calc(float plim)
  **     Description :  计算回路中四点参数
- **     Parameters  :无
+ **     Parameters  :无	
  **                 none
  **     Returns     :无
  **                 none
@@ -81,22 +83,59 @@ uint32_t usefor_adc[ADC1_CHANNEL_CNT];
 CONTROL_STRUCT in, chassis, full_bridge_in, cap; //总输入，底盘输出，dcdc输入，dcdc输出
 void control_calc(void)
 {
-	in.I = dcdcinfo.I_bat;
-	in.V = dcdcinfo.V_bat;
-	in.P = in.V * in.I;
+#if LPF_ENABLE == 1
+    lpf[0].Input = dcdcinfo.I_bat;
+    lpf[1].Input = dcdcinfo.V_bat;
+    lpf[2].Input = dcdcinfo.I_cap_in;
+    lpf[3].Input = dcdcinfo.I_cap_out;
+    lpf[4].Input = dcdcinfo.V_cap;
 	
-	chassis.I = dcdcinfo.I_bat - dcdcinfo.I_cap_in;
-	chassis.V = dcdcinfo.V_bat;
-	chassis.P = chassis.V * chassis.I;
+    for (char i = 0; i < 5; i++)
+    {
+        low_filter_calc(&lpf[i]);
+    }
+		
+		dcdctest.I_bat = lpf[0].Output;
+		dcdctest.V_bat = lpf[1].Output;
+		dcdctest.I_cap_in = lpf[2].Output;
+		dcdctest.I_cap_out = lpf[3].Output;
+		dcdctest.V_cap = lpf[4].Output;
+		
+		in.I = dcdctest.I_bat;
+		in.V = dcdctest.V_bat;
+		in.P = in.V * in.I;
+		if(in.P<0){in.P = 0;}
+		
+		chassis.I = dcdctest.I_bat - dcdctest.I_cap_in;
+		chassis.V = dcdctest.V_bat;
+		chassis.P = chassis.V * chassis.I;
+		
+		full_bridge_in.I = dcdctest.I_cap_in;
+		full_bridge_in.V = dcdctest.V_bat;
+		full_bridge_in.P = full_bridge_in.V * full_bridge_in.I;
+		
+		cap.I = dcdctest.I_cap_out;
+		cap.V = dcdctest.V_cap;
+		cap.P = cap.V * cap.I;
 	
-	full_bridge_in.I = dcdcinfo.I_cap_in;
-	full_bridge_in.V = dcdcinfo.V_bat;
-	full_bridge_in.P = full_bridge_in.V * full_bridge_in.I;
-	
-	cap.I = dcdcinfo.I_cap_out;
-	cap.V = dcdcinfo.V_cap;
-	cap.P = cap.V * cap.I;
-	
+#else
+		in.I = dcdcinfo.I_bat;
+		in.V = dcdcinfo.V_bat;
+		in.P = in.V * in.I;
+		if(in.P<0){in.P = 0;}
+		
+		chassis.I = dcdcinfo.I_bat - dcdcinfo.I_cap_in;
+		chassis.V = dcdcinfo.V_bat;
+		chassis.P = chassis.V * chassis.I;
+		
+		full_bridge_in.I = dcdcinfo.I_cap_in;
+		full_bridge_in.V = dcdcinfo.V_bat;
+		full_bridge_in.P = full_bridge_in.V * full_bridge_in.I;
+		
+		cap.I = dcdcinfo.I_cap_out;
+		cap.V = dcdcinfo.V_cap;
+		cap.P = cap.V * cap.I;
+#endif
 }
 
 /*
@@ -118,113 +157,176 @@ void control_calc(void)
  ** ===================================================================
  */
 
-BUCKBOOST_STRUCT buckboost;
+#define shift_ratio 0.83f
+float testpower = 30.0f;
+float testvoltage = 25.50f;
+
+//CtrValue.Pcharge
+volatile fp32 volt_ratio = 0;
+volatile fp32 volt_ratio_filter = 0;
 volatile fp32 pid_final_buck = 0;
 volatile fp32 pid_final_boost = 0;
-float testpower = 30;
-
-
- void BuckBoostVLoopCtlPID(void)
+//		volt_ratio += 0.03f*(testpower/cap.V - cap.I);
+void BuckBoostVLoopCtlPID(void)
 {
-    if (FLAGS.BBModeChange)
-    {
-			IncrementalPID_Clear(&currentout_Iloop); 
-			IncrementalPID_Clear(&voltageout_Vloop); 
-    }
-    switch (FLAGS.BBFlag)
-    {
-			case NA0: 
-			{				//init
-				IncrementalPID_Clear(&currentout_Iloop); 
-				IncrementalPID_Clear(&voltageout_Vloop); 
+	if(FLAGS.DRModeChange)
+	{
+		IncrementalPID_ClearWithoutOutput(&currentout_Iloop); 
+		IncrementalPID_ClearWithoutOutput(&voltageout_Vloop); 
+	}
+	switch(FLAGS.DRFlag)
+	{
+		case NA1:
+		{
+        if (powerin_Ploop.output >= 0)
+        {
+            FLAGS.DRFlag = Charge;     //charge mode
+        }
+        else
+        {
+            FLAGS.DRFlag = Discharge;  //Discharge mode
+        }
+        break;
+		}
+		case Charge:
+		{
+			if(FLAGS.DRModeChange)
+			{
+			IncrementalPID_Init(&currentout_Iloop, 0.001f, 0.008f, 0.03f,volt_ratio,
+                         1.2f, -1.2f,
+                         1.2f, 0.10f); 
+			IncrementalPID_Init(&voltageout_Vloop, 0.00f, 0.03f, 0.00f,volt_ratio,
+                         1.2f, -1.2f,
+                         1.2f, 0.10f);
+			FLAGS.DRModeChange = 0;
+			}
+			IncrementalPID_Compute(&powerin_Ploop,CtrValue.Poref, in.P);
+			IncrementalPID_Compute(&currentout_Iloop,powerin_Ploop.output, full_bridge_in.I);
+			IncrementalPID_Compute(&voltageout_Vloop,CtrValue.Voref, cap.V);
+			
+			if (currentout_Iloop.output > voltageout_Vloop.output)
+			{
+				volt_ratio = voltageout_Vloop.output;
+				FLAGS.Cloop = voltage_loop;
+			}
+			else
+			{
+				volt_ratio = currentout_Iloop.output;
+				FLAGS.Cloop = current_loop;
+			}
+			
+			/*---pid输出判断，占空比钳位，输出已在pid限幅---*/
+			if(volt_ratio >=shift_ratio)
+			{
+				pid_final_buck = shift_ratio;
+				pid_final_boost = volt_ratio - shift_ratio + 0.05f;
+			}else if (volt_ratio <shift_ratio)
+			{
+				pid_final_buck = volt_ratio;
+				pid_final_boost = 0.05f;
+			}
+					
+			CtrValue.BuckDuty = pid_final_buck * HRTIMA_Period;
+			CtrValue.BoostDuty = pid_final_boost * HRTIMA_Period;
+			
+			if (CtrValue.BuckDuty < (cap.V / 33.0f * HRTIMA_Period))
+			{
+				 CtrValue.BuckDuty = cap.V / 33.0f * HRTIMA_Period;
+			}
+			
+			/*---PWM输出限幅,缓启动---*/
+			if(CtrValue.BuckDuty > CtrValue.BuckMaxDuty)
+			{
+				CtrValue.BuckDuty = CtrValue.BuckMaxDuty;
+			}
+			if(CtrValue.BoostDuty > CtrValue.BoostMaxDuty)
+			{
+				CtrValue.BoostDuty = CtrValue.BoostMaxDuty;
+			}
+			if(CtrValue.BuckDuty < MIN_BUCK_DUTY)
+			{
+				CtrValue.BuckDuty = MIN_BUCK_DUTY;
+			}
+			if(CtrValue.BoostDuty < MIN_BOOST_DUTY)
+			{
+				CtrValue.BoostDuty = MIN_BOOST_DUTY;
+			}
 			break;
-			}
-			case Buck:  //BUCK mode
+		}
+		case Discharge:
+		{
+			if(FLAGS.DRModeChange)
 			{
-				if (FLAGS.BBModeChange)
-					{
-							IncrementalPID_Init(&currentout_Iloop,0.0f,0.004f,0.0005f,0,0.01,-0.01,0.95,0.05); 
-							IncrementalPID_Init(&voltageout_Vloop,0.0f,0.1f,1.0f,0,0.01,-0.01,0.95,0.05); 
-							FLAGS.BBModeChange = 0;
-					}
-					IncrementalPID_Compute(&currentout_Iloop,testpower/full_bridge_in.V,full_bridge_in.I);
-					IncrementalPID_Compute(&voltageout_Vloop,tarvoltage,cap.V);
-					
-					if (currentout_Iloop.output < voltageout_Vloop.output)       //电流环与电压环为竞争，功率环为电流环前置
-					{
-							pid_final_buck = currentout_Iloop.output;
-							FLAGS.Cloop = current_loop;
-					}
-					else
-					{
-							pid_final_buck = voltageout_Vloop.output;
-							FLAGS.Cloop = voltage_loop;
-					}
-					pid_final_boost = 0.05f;
-					CtrValue.BuckDuty = pid_final_buck * HRTIMA_Period;
-					CtrValue.BoostDuty = pid_final_boost * HRTIMD_Period; //BOOST duty fixed PWM 0.95
-					
-					/*max out & min out restrict*/
-					//soft start related
-					if (CtrValue.BuckDuty > CtrValue.BuckMaxDuty)
-					{
-							CtrValue.BuckDuty = CtrValue.BuckMaxDuty;
-					}
-					//avoiding a voltage spike
-					if (CtrValue.BuckDuty < (cap.V / 33.0f * HRTIMA_Period))
-					{
-							CtrValue.BuckDuty = cap.V / 33.0f * HRTIMA_Period;
-					}
-					break;
-				}
-			case Mix:   //Mix mode
-			{
-				if (FLAGS.BBModeChange)
-					{
-							IncrementalPID_Init(&currentout_Iloop,0.0f,-0.05f,0.0f,0.1,0.01f,-0.01f,0.50f,0.04f); 
-							IncrementalPID_Init(&voltageout_Vloop,0.01f,0.2f,0.1f,0.1,0.01f,-0.01f,0.50f,0.04f); 
-							FLAGS.BBModeChange = 0;
-					}
-					IncrementalPID_Compute(&currentout_Iloop,testpower/full_bridge_in.V,full_bridge_in.I);
-					IncrementalPID_Compute(&voltageout_Vloop,tarvoltage,cap.V);
-					
-					if (currentout_Iloop.output < voltageout_Vloop.output)       //电流环与电压环为竞争，功率环为电流环前置
-					{
-							pid_final_boost = currentout_Iloop.output;
-							FLAGS.Cloop = current_loop;
-					}
-					else
-					{
-							pid_final_boost = voltageout_Vloop.output;
-							FLAGS.Cloop = voltage_loop;
-					}
-					pid_final_buck = 0.83f;
-					CtrValue.BoostDuty = pid_final_boost * HRTIMA_Period;
-					CtrValue.BuckDuty = pid_final_buck * HRTIMD_Period; //buck duty fix 0.75
-
-//					if (FLAGS.BBModeChange)
-//					{
-//							CtrValue.BoostDuty = (1.003f - 0.8f * in.V / cap.V) * HRTIMA_Period;
-//							FLAGS.BBModeChange = 0;
-//					}
-					if (CtrValue.BoostDuty > CtrValue.BoostMaxDuty)
-					{
-							CtrValue.BoostDuty = CtrValue.BoostMaxDuty;
-					}
-					break;
+			IncrementalPID_Init(&currentout_Iloop, 0.001f, 0.008f, 0.03f,volt_ratio,
+                         1.2f, -1.2f,
+                         1.2f, 0.10f); 
+			IncrementalPID_Init(&voltageout_Vloop, 0.00f, -0.03f, 0.00f,volt_ratio,
+                         1.2f, -1.2f,
+                         1.2f, 0.10f);
+			FLAGS.DRModeChange = 0;
 			}
-			default:
+			
+			IncrementalPID_Compute(&powerin_Ploop,CtrValue.Poref, in.P);
+			IncrementalPID_Compute(&currentout_Iloop,powerin_Ploop.output, full_bridge_in.I);
+			IncrementalPID_Compute(&voltageout_Vloop,limitoutvoltage, in.V);
+			
+			if (currentout_Iloop.output > voltageout_Vloop.output)
 			{
-					break;
+				volt_ratio = currentout_Iloop.output;
+				FLAGS.Cloop = current_loop;
 			}
-    }
-    /*PWMENFlag is pwm enable flag, when this reg unset, PWM get to minimum period*/
+			else
+			{
+				volt_ratio = voltageout_Vloop.output;
+				FLAGS.Cloop = voltage_loop;
+			}
+			
+			/*---pid输出判断，占空比钳位，输出已在pid限幅---*/
+			if(volt_ratio >=shift_ratio)
+			{
+				pid_final_buck = shift_ratio;
+				pid_final_boost = volt_ratio - shift_ratio + 0.05f;
+			}else if (volt_ratio <shift_ratio)
+			{
+				pid_final_buck = volt_ratio;
+				pid_final_boost = 0.05f;
+			}
+					
+			CtrValue.BuckDuty = pid_final_buck * HRTIMA_Period;
+			CtrValue.BoostDuty = pid_final_boost * HRTIMA_Period;
+			
+			if (CtrValue.BuckDuty < (cap.V / 33.0f * HRTIMA_Period))
+			{
+				 CtrValue.BuckDuty = cap.V / 33.0f * HRTIMA_Period;
+			}
+			
+			/*---PWM输出限幅,缓启动---*/
+			if(CtrValue.BuckDuty > CtrValue.BuckMaxDuty)
+			{
+				CtrValue.BuckDuty = CtrValue.BuckMaxDuty;
+			}
+			if(CtrValue.BoostDuty > CtrValue.BoostMaxDuty)
+			{
+				CtrValue.BoostDuty = CtrValue.BoostMaxDuty;
+			}
+			if(CtrValue.BuckDuty < MIN_BUCK_DUTY)
+			{
+				CtrValue.BuckDuty = MIN_BUCK_DUTY;
+			}
+			if(CtrValue.BoostDuty < MIN_BOOST_DUTY)
+			{
+				CtrValue.BoostDuty = MIN_BOOST_DUTY;
+			}
+			break;
+		}	
+	}
+		/*---pwm使能控制---*/
     if (FLAGS.PWMENFlag == 0)
     {
         CtrValue.BuckDuty = MIN_BUCK_DUTY;
         CtrValue.BoostDuty = MIN_BOOST_DUTY;
     }
     /*update PWM regs*/
-	 hhrtim1.Instance->sTimerxRegs[0].CMP1xR = HRTIMA_Period - CtrValue.BuckDuty;  //通过修改比较值CMP，从而修改占空比
+	 hhrtim1.Instance->sTimerxRegs[0].CMP1xR = CtrValue.BuckDuty;  //通过修改比较值CMP，从而修改占空比
    hhrtim1.Instance->sTimerxRegs[3].CMP1xR = CtrValue.BoostDuty;  //通过修改比较值CMP，从而修改占空比
 }

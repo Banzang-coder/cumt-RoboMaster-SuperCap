@@ -8,6 +8,7 @@
 
 
 
+extern uint16_t adcProtcnt;
 
 
 

@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F334x8, ARM_MATH_CM4, __FPU_PRESENT=1U, __CC_ARM</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;               ../Drivers/STM32F3xx_HAL_Driver/Inc;               ../Drivers/STM32F3xx_HAL_Driver/Inc/Legacy;               ../Drivers/CMSIS/Device/ST/STM32F3xx/Include;               ../Drivers/CMSIS/Include;               .\bsp_user</IncludePath>
+              <IncludePath>../Core/Inc;                                ../Drivers/STM32F3xx_HAL_Driver/Inc;                                ../Drivers/STM32F3xx_HAL_Driver/Inc/Legacy;                                ../Drivers/CMSIS/Device/ST/STM32F3xx/Include;                                ../Drivers/CMSIS/Include;                                .\bsp_user</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1189,6 +1189,16 @@
               <FileName>program.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\bsp_user\program.c</FilePath>
+            </File>
+            <File>
+              <FileName>drv_can.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\bsp_user\drv_can.c</FilePath>
+            </File>
+            <File>
+              <FileName>drv_usart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\bsp_user\drv_usart.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -1,22 +1,21 @@
 #include "program.h"
-
 /** ===================================================================
  **     Funtion Name :void WorkInit(void)
  **     Description :执行初始化函数
  **     Parameters  :void
  **     Returns     :void
  ** ===================================================================*/
+uint16_t adcProtcnt = 0;
 void WorkInit(void)
 {
-	HAL_TIM_Base_Start_IT(&htim2);
-	HAL_Delay(10);
 	UserADC1_Init();	
-#if LPF_ENABLE == 1
-    for (char i = 0; i < 5; i++)
-    {
-        low_filter_init(&lpf[i], 200e3, 30e3);
-    }
-#endif
+	while(1)
+	{
+		if(adcProtcnt > 500)break;
+	}
+	HAL_TIM_Base_Start_IT(&htim2);
+	
+
 }
 
 /** ===================================================================
@@ -33,11 +32,20 @@ uint16_t timer2cnt = 0; //65535
 	if (htim->Instance == TIM2)
 	{
 		timer2cnt++;//计时
+		if(timer2cnt % 1000 == 0)
+		{
+			LED_Toggle(GREEN);
+
+		}
 		StateM();//状态机，运行状态
 
-//    BBMode();//判断buck与mix模态
-		DRMode();//判断充放电方向
-		BuckBoostVLoopCtlPID();//PID模态回路计算
+		if(timer2cnt % 5 == 0)
+		{
+			Communication_Onlinecnt++;
+			CAN_SendData(&hcan, 0x601, 8);
+			printf("%f,%f,%f,%f,%f\r\n",in.P,full_bridge_in.I,in.I,in.V,volt_ratio);
+		}
+		
 	}
 }
 

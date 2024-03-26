@@ -57,12 +57,13 @@ extern void PID_init(pid_type_def *pid, const fp32 p, const fp32 i, const fp32 d
 extern fp32 PID_calc(pid_type_def *pid, fp32 ref, fp32 set);
 extern void PID_clear(pid_type_def *pid);
 
+
+
 extern void IncrementalPID_Init(IncrementalPID *pid, float kp, float ki, float kd,float output_init,
                          float integral_max, float integral_min,
                          float output_max, float output_min);
 extern void IncrementalPID_Clear(IncrementalPID *pid);
 extern float IncrementalPID_Compute(IncrementalPID *pid, float setpoint, float measured_value);
-
 extern void IncrementalPID_UpdateControlOutput(float *control_output, float output_increment);
 extern void IncrementalPID_ClearWithoutOutput(IncrementalPID *pid);
 
@@ -74,6 +75,8 @@ extern pid_type_def power_referee_loop;
 
 extern IncrementalPID currentout_Iloop;
 extern IncrementalPID voltageout_Vloop;
+extern IncrementalPID powerin_Ploop;
+extern IncrementalPID Nchargelimit;
 #ifdef __cplusplus
 }
 #endif

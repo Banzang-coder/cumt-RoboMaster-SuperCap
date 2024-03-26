@@ -6,12 +6,12 @@
             <JLink>
                 <Options Connection="1" IsRTTSession="0" IsRTTWithTimeStamp="1" SamplingPeriod="100" SerialNo="0" JTAG_IRPre="-1" JTAG_DRPre="-1" IP="" TargetDevice="unspecified" TargetInterface="SWD" InterfaceSpeed="4000" />
             </JLink>
-            <ScriptFile Name="C:\Users\12568\Desktop\Superap\Superap\F334_series\MDK-ARM\F334_series\pidtest.jscope\unspecified" />
-            <ElfFile Name="C:\Users\12568\Desktop\Superap\Superap\F334_series\MDK-ARM\F334_series\F334_series.axf" />
+            <ScriptFile Name="C:\Users\12568\Desktop\Superap\Superap\LASTDANCE\MDK-ARM\F334_series\pidtest.jscope\unspecified" />
+            <ElfFile Name="C:\Users\12568\Desktop\Superap\Superap\LASTDANCE\MDK-ARM\F334_series\F334_series.axf" />
             <DataFile Name="" />
             <RawFile Name="" />
             <Scope>
-                <Options TimeResolutionUs="500000" />
+                <Options TimeResolutionUs="1000000" />
             </Scope>
         </Configuration>
         <Windows>
@@ -20,10 +20,19 @@
         </Windows>
         <SelectedSymbols>
             <Symbol>
-                <Options Name="pid_final" Address="0x20000038" Type="volatile float" TypeID="1" Size="4" GraphColorRed="255" GraphColorGreen="215" GraphColorBlue="0" YMinSampled="0" YMaxSampled="746627" YAvgSampled="8250" Offset="4" ShowInGraph="1" ACCoupling="0" YOffset="200" IsAutoConfig="0" YResolution="1" MaxValue="1000000" File="bsp_user\power_calc.c" Scope="0" DrawStyle="0" />
+                <Options Name="pid_final_boost" Address="0x20000064" Type="volatile float" TypeID="1" Size="4" GraphColorRed="255" GraphColorGreen="215" GraphColorBlue="0" YMinSampled="0" YMaxSampled="0" YAvgSampled="0" Offset="4" ShowInGraph="1" ACCoupling="0" YOffset="310" IsAutoConfig="0" YResolution="1" MaxValue="-2147483648" File="bsp_user\power_calc.c" Scope="0" DrawStyle="0" />
             </Symbol>
             <Symbol>
-                <Options Name="BBFlag" Address="0x200002FA" Type="ushort" TypeID="7" Size="2" GraphColorRed="0" GraphColorGreen="255" GraphColorBlue="0" YMinSampled="0" YMaxSampled="63980" YAvgSampled="227" Offset="8" ShowInGraph="1" ACCoupling="0" YOffset="280" IsAutoConfig="0" YResolution="1" MaxValue="344" File="bsp_user\function.c" Scope="0" DrawStyle="0" />
+                <Options Name="pid_final_buck" Address="0x20000060" Type="volatile float" TypeID="1" Size="4" GraphColorRed="0" GraphColorGreen="255" GraphColorBlue="0" YMinSampled="0" YMaxSampled="0" YAvgSampled="0" Offset="8" ShowInGraph="1" ACCoupling="0" YOffset="350" IsAutoConfig="1" YResolution="1" MaxValue="3" File="bsp_user\power_calc.c" Scope="0" DrawStyle="0" />
+            </Symbol>
+            <Symbol>
+                <Options Name="volt_ratio" Address="0x20000058" Type="volatile float" TypeID="1" Size="4" GraphColorRed="102" GraphColorGreen="102" GraphColorBlue="178" YMinSampled="23" YMaxSampled="23" YAvgSampled="23" Offset="12" ShowInGraph="1" ACCoupling="0" YOffset="190" IsAutoConfig="0" YResolution="1" MaxValue="-2147483648" File="bsp_user\power_calc.c" Scope="0" DrawStyle="0" />
+            </Symbol>
+            <Symbol>
+                <Options Name="I" Address="0x200003E4" Type="float" TypeID="1" Size="4" GraphColorRed="0" GraphColorGreen="191" GraphColorBlue="255" YMinSampled="23" YMaxSampled="23" YAvgSampled="23" Offset="16" ShowInGraph="1" ACCoupling="0" YOffset="20" IsAutoConfig="0" YResolution="10" MaxValue="-2147483648" File="bsp_user\power_calc.c" Scope="0" DrawStyle="0" />
+            </Symbol>
+            <Symbol>
+                <Options Name="V" Address="0x20000404" Type="float" TypeID="1" Size="4" GraphColorRed="255" GraphColorGreen="0" GraphColorBlue="0" YMinSampled="-1" YMaxSampled="0" YAvgSampled="0" Offset="20" ShowInGraph="1" ACCoupling="0" YOffset="690" IsAutoConfig="1" YResolution="1" MaxValue="2" File="bsp_user\power_calc.c" Scope="0" DrawStyle="0" />
             </Symbol>
         </SelectedSymbols>
     </Project>

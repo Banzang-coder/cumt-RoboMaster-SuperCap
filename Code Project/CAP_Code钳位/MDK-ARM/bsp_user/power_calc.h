@@ -9,14 +9,10 @@ extern "C"
 #include "function.h"
 #include "struct_typedef.h"
 
-#define HRTIMD_Period 46080
-#define HRTIMA_Period 46080
-#define HRTIMMaster_Period 46080
-
 #define ADC1_CHANNEL_CNT 5 	//采样通道数
 #define ADC1_CHANNEL_FRE 5	//单个通道采样次数，用来取平均值
 #define board_version (0)   //板子序号，用哪个板子就是那个
-#define LPF_ENABLE    (1)   //低通滤波使能
+#define LPF_ENABLE    (0)   //低通滤波使能
 	
 typedef struct
 {
@@ -51,10 +47,13 @@ void UserADC1_Init(void);
 void control_calc(void);
 
 extern CONTROL_STRUCT in, chassis, full_bridge_in, cap;
-extern uint16_t pid_seesee;
 extern struct ParameterBridge dcdcinfo;
 extern volatile fp32 pid_final_buck;
 extern volatile fp32 pid_final_boost;
+extern volatile fp32 volt_ratio;
+extern volatile fp32 volt_ratio_filter;
+
+extern struct ParameterBridge dcdctest;
 
 #ifdef __cplusplus
 }

@@ -57,3 +57,7 @@ f334_series\main.o: .\bsp_user\power_calc.h
 f334_series\main.o: .\bsp_user\struct_typedef.h
 f334_series\main.o: .\bsp_user\drv_pid.h
 f334_series\main.o: .\bsp_user\program.h
+f334_series\main.o: .\bsp_user\drv_can.h
+f334_series\main.o: .\bsp_user\linux_list.h
+f334_series\main.o: .\bsp_user\drv_can.h
+f334_series\main.o: .\bsp_user\drv_usart.h
