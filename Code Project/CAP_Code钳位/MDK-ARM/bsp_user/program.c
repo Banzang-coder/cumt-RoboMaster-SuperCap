@@ -43,7 +43,7 @@ uint16_t timer2cnt = 0; //65535
 		{
 			Communication_Onlinecnt++;
 			CAN_SendData(&hcan, 0x601, 8);
-			printf("%f,%f,%f,%f,%f\r\n",in.P,full_bridge_in.I,in.I,in.V,volt_ratio);
+			printf("%f,%f,%f,%f,%f,%d\r\n",in.P,full_bridge_in.I,in.I,in.V,volt_ratio,FLAGS.Cloop);
 		}
 		
 	}

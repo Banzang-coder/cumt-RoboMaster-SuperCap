@@ -1,4 +1,4 @@
---cpu=Cortex-M4.fp
+--cpu=Cortex-M4.fp.sp
 "f334_series\startup_stm32f334x8.o"
 "f334_series\main.o"
 "f334_series\gpio.o"
@@ -40,6 +40,6 @@
 "f334_series\drv_can.o"
 "f334_series\drv_usart.o"
 --library_type=microlib --strict --scatter "F334_series\F334_series.sct"
---summary_stderr --info summarysizes --map --xref --callgraph --symbols
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
 --list "F334_series.map" -o F334_series\F334_series.axf

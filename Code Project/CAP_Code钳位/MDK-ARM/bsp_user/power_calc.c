@@ -55,9 +55,11 @@ uint32_t usefor_adc[ADC1_CHANNEL_CNT];
 #if board_version == 0
 	dcdcinfo.V_bat =    	  (float)adc_raw_data[0]* 0.0121f   + 0.0407f;
 	dcdcinfo.V_cap =     		(float)adc_raw_data[1]* 0.0120f   + 0.0283f;
-	dcdcinfo.I_cap_in =     (float)adc_raw_data[2]* (-0.0053f)   +10.7935f;
+//	dcdcinfo.I_cap_in =     (float)adc_raw_data[2]* (-0.0053f)   +10.7935f;
+	dcdcinfo.I_cap_in=      (float)adc_raw_data[2]* (-0.0021f)   +4.3374f;
 	dcdcinfo.I_cap_out = 		(float)adc_raw_data[3]* 0.0053f   -10.8435f;
 	dcdcinfo.I_bat =  			(float)adc_raw_data[4]* 0.0053f   -10.7935f;
+	
 #endif
 	  for (uint8_t i = 0; i < ADC1_CHANNEL_CNT; i++) 
 		{
@@ -160,6 +162,7 @@ void control_calc(void)
 #define shift_ratio 0.83f
 float testpower = 30.0f;
 float testvoltage = 25.50f;
+float testI = 1.3f;
 
 //CtrValue.Pcharge
 volatile fp32 volt_ratio = 0;
@@ -192,10 +195,10 @@ void BuckBoostVLoopCtlPID(void)
 		{
 			if(FLAGS.DRModeChange)
 			{
-			IncrementalPID_Init(&currentout_Iloop, 0.001f, 0.008f, 0.03f,volt_ratio,
+			IncrementalPID_Init(&currentout_Iloop, 0.003f, 0.003f, -0.20f,volt_ratio,
                          1.2f, -1.2f,
                          1.2f, 0.10f); 
-			IncrementalPID_Init(&voltageout_Vloop, 0.00f, 0.03f, 0.00f,volt_ratio,
+			IncrementalPID_Init(&voltageout_Vloop, 0.005f, 0.003f, 0.005f,volt_ratio,
                          1.2f, -1.2f,
                          1.2f, 0.10f);
 			FLAGS.DRModeChange = 0;
@@ -257,10 +260,10 @@ void BuckBoostVLoopCtlPID(void)
 		{
 			if(FLAGS.DRModeChange)
 			{
-			IncrementalPID_Init(&currentout_Iloop, 0.001f, 0.008f, 0.03f,volt_ratio,
+			IncrementalPID_Init(&currentout_Iloop, 0.003f, 0.003f, -0.20f,volt_ratio,
                          1.2f, -1.2f,
                          1.2f, 0.10f); 
-			IncrementalPID_Init(&voltageout_Vloop, 0.00f, -0.03f, 0.00f,volt_ratio,
+			IncrementalPID_Init(&voltageout_Vloop, -0.005f, -0.003f, -0.005f,volt_ratio,
                          1.2f, -1.2f,
                          1.2f, 0.10f);
 			FLAGS.DRModeChange = 0;

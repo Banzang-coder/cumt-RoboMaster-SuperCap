@@ -386,9 +386,9 @@ void StateMRise(void)
 					IncrementalPID_Init(&voltageout_Vloop, 0.00f, 0.03f, 0.00f,volt_ratio,
                          1.2f, -1.2f,
                          1.2f, 0.10f);
-					IncrementalPID_Init(&powerin_Ploop, 0.0f, 0.0005f, 0.0f,0.0f,
-                         1.2f, -1.2f,
-                         10.00f, -10.00f);	
+					IncrementalPID_Init(&powerin_Ploop, 0.005f, 0.0024f, 0.60f,0.00f,
+														 1.2f, -1.2f,
+														 6.00f, -6.00f);	
 					CAN_Filter_Init(&hcan);
 	        UART2_Open(RxBuffer,sizeof(RxBuffer));
 				/*-----µÍÍ¨ÂË²¨-----*/	

@@ -18,7 +18,6 @@
 #include <stdlib.h>
 
 /*外设库*/
-#include "arm_math.h" /*影响编译速度，只在需要的地方加*/
 #include "math.h"
 /*自己的库*/
 #include "filter.h"

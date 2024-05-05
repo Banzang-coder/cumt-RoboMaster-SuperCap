@@ -43,6 +43,8 @@ typedef struct {
     float Kp;          // 比例系数
     float Ki;          // 积分系数
     float Kd;          // 微分系数
+		float setvalue;
+		float realvalue;
     float integral;    // 积分项累积值
     float integral_max; // 积分项最大值
     float integral_min; // 积分项最小值

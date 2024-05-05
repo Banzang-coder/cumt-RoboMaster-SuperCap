@@ -47,9 +47,6 @@ f334_series\main.o: ../Core/Inc/stm32f3xx_it.h
 f334_series\main.o: ../Core/Inc/tim.h
 f334_series\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 f334_series\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
-f334_series\main.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include\arm_math.h
-f334_series\main.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include\core_cm4.h
-f334_series\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 f334_series\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 f334_series\main.o: .\bsp_user\filter.h
 f334_series\main.o: .\bsp_user\function.h

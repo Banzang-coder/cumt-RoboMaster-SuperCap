@@ -3,6 +3,7 @@
 
 #include "function.h"
 #include "power_calc.h"
+
 uint16_t getValue(void);
 
 #define low_filter_default {0, 0, 0, 0, 0, 0}
@@ -20,7 +21,7 @@ typedef struct
 
 #define PI2  2 * PI
 #define N 10 // ÂË²¨Æ÷´°¿Ú´óÐ¡
-
+#define PI 3.1415926535f
 extern LOWPASS_FILTER_STRUCT lpf[5];
 
 extern void bubble_sort( uint32_t *a ,unsigned char Num);

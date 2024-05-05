@@ -143,6 +143,8 @@ void IncrementalPID_Clear(IncrementalPID *pid)
 // 计算增量式PID输出并进行输出限幅
 float IncrementalPID_Compute(IncrementalPID *pid, float setpoint, float measured_value)
 {
+		pid->setvalue = setpoint;
+		pid->realvalue = measured_value;
     // 计算误差
     float error = setpoint - measured_value;
 
